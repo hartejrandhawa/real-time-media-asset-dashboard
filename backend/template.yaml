@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Media Asset Dashboard API — Express app wrapped with serverless-http,
+  deployed behind API Gateway (HTTP API) on Lambda. CloudWatch logging is
+  automatic for Lambda, no extra resources needed.
+
+Parameters:
+  DbHost:
+    Type: String
+  DbUser:
+    Type: String
+  DbPassword:
+    Type: String
+    NoEcho: true
+  DbName:
+    Type: String
+    Default: media_asset_dashboard
+  JwtSecret:
+    Type: String
+    NoEcho: true
+
+Globals:
+  Function:
+    Timeout: 15
+    MemorySize: 256
+    Runtime: nodejs20.x
+
+Resources:
+  MediaAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'media-assets-${AWS::AccountId}-${AWS::Region}'
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, PUT]
+            AllowedOrigins: ['*']
+            AllowedHeaders: ['*']
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/lambda.handler
+      Environment:
+        Variables:
+          DB_HOST: !Ref DbHost
+          DB_USER: !Ref DbUser
+          DB_PASSWORD: !Ref DbPassword
+          DB_NAME: !Ref DbName
+          JWT_SECRET: !Ref JwtSecret
+          S3_BUCKET_NAME: !Ref MediaAssetsBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref MediaAssetsBucket
+      Events:
+        ProxyRoot:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: Invoke URL for the HTTP API
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  BucketName:
+    Value: !Ref MediaAssetsBucket

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS assets (
     status VARCHAR(20) NOT NULL,
     tenant_id VARCHAR(50) NOT NULL,
     file_size BIGINT,
+    s3_bucket VARCHAR(255),
+    s3_key VARCHAR(512),
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );

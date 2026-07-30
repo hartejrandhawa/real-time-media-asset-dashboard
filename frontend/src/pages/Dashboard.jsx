@@ -13,6 +13,8 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [upload, setUpload] = useState({ tenant_id: "", asset_type: "video", file: null });
+  const [uploading, setUploading] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const canEdit = user?.role === "admin" || user?.role === "editor";
@@ -49,6 +51,28 @@ export default function Dashboard() {
     navigate("/login");
   }
 
+  async function handleUpload(e) {
+    e.preventDefault();
+    if (!upload.file || !upload.tenant_id) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      await api.uploadFile({
+        filename: upload.file.name,
+        asset_type: upload.asset_type,
+        tenant_id: upload.tenant_id,
+        file: upload.file,
+      });
+      setUpload({ tenant_id: upload.tenant_id, asset_type: upload.asset_type, file: null });
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / 15));
 
   return (
@@ -60,6 +84,26 @@ export default function Dashboard() {
           <button className="link-btn" onClick={handleLogout}>Log out</button>
         </div>
       </header>
+
+      {canEdit && (
+        <form className="filters card" onSubmit={handleUpload}>
+          <input
+            placeholder="Tenant ID (e.g. tenant_c)"
+            value={upload.tenant_id}
+            onChange={(e) => setUpload({ ...upload, tenant_id: e.target.value })}
+            required
+          />
+          <select value={upload.asset_type} onChange={(e) => setUpload({ ...upload, asset_type: e.target.value })}>
+            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <input
+            type="file"
+            onChange={(e) => setUpload({ ...upload, file: e.target.files[0] || null })}
+            required
+          />
+          <button type="submit" disabled={uploading}>{uploading ? "Uploading..." : "Upload asset"}</button>
+        </form>
+      )}
 
       <div className="filters card">
         <input
@@ -90,6 +134,7 @@ export default function Dashboard() {
                 <th>Type</th>
                 <th>Tenant</th>
                 <th>Status</th>
+                <th>File</th>
                 <th>Updated</th>
                 <th></th>
               </tr>
@@ -109,6 +154,7 @@ export default function Dashboard() {
                       <span className={`status-badge status-${a.status}`}>{a.status}</span>
                     )}
                   </td>
+                  <td>{a.has_file ? "Uploaded" : "—"}</td>
                   <td>{new Date(a.updated_at).toLocaleString()}</td>
                   <td><Link to={`/assets/${a.id}`}>Logs</Link></td>
                 </tr>

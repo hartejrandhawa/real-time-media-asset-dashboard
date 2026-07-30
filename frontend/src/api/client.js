@@ -37,4 +37,28 @@ export const api = {
   getAsset: (id) => request(`/assets/${id}`),
   updateStatus: (id, status) => request(`/assets/${id}/status`, { method: "PATCH", body: { status } }),
   getLogs: (id) => request(`/assets/${id}/logs`),
+
+  createAsset: (data) => request("/assets", { method: "POST", body: data }),
+  confirmUpload: (id, file_size) =>
+    request(`/assets/${id}/confirm-upload`, { method: "POST", body: { file_size } }),
+  getDownloadUrl: (id) => request(`/assets/${id}/download-url`),
+
+  async uploadFile({ filename, asset_type, tenant_id, file }) {
+    const { id, uploadUrl } = await api.createAsset({
+      filename,
+      asset_type,
+      tenant_id,
+      content_type: file.type || "application/octet-stream",
+    });
+
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!putRes.ok) throw new Error(`Upload to S3 failed (${putRes.status})`);
+
+    await api.confirmUpload(id, file.size);
+    return id;
+  },
 };
