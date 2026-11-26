@@ -19,6 +19,12 @@ Parameters:
   JwtSecret:
     Type: String
     NoEcho: true
+    MinLength: 32
+  CorsOrigin:
+    Type: String
+    Description: >
+      Comma-separated browser origin(s) of the deployed frontend,
+      e.g. https://assets.example.com. Used for both the API and the bucket.
 
 Globals:
   Function:
@@ -34,8 +40,9 @@ Resources:
       CorsConfiguration:
         CorsRules:
           - AllowedMethods: [GET, PUT]
-            AllowedOrigins: ['*']
+            AllowedOrigins: !Split [',', !Ref CorsOrigin]
             AllowedHeaders: ['*']
+            MaxAge: 3600
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -49,6 +56,8 @@ Resources:
           DB_PASSWORD: !Ref DbPassword
           DB_NAME: !Ref DbName
           JWT_SECRET: !Ref JwtSecret
+          CORS_ORIGIN: !Ref CorsOrigin
+          NODE_ENV: production
           S3_BUCKET_NAME: !Ref MediaAssetsBucket
       Policies:
         - S3CrudPolicy:
