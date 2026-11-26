@@ -16,7 +16,16 @@ CREATE TABLE IF NOT EXISTS assets (
     s3_bucket VARCHAR(255),
     s3_key VARCHAR(512),
     created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
+    updated_at DATETIME NOT NULL,
+    -- Composite index backing the dashboard search/filter query
+    -- (WHERE tenant_id = ? AND status = ? ORDER BY created_at DESC).
+    -- Measure its effect with `npm run bench` in backend/.
+    INDEX idx_tenant_status_created (tenant_id, status, created_at),
+    -- Cross-tenant views: the default "newest first" list and the
+    -- status-only filter, which can't use the tenant-led index above.
+    -- file_size makes it covering for the unfiltered per-status totals.
+    INDEX idx_created (created_at),
+    INDEX idx_status_created (status, created_at, file_size)
 );
 
 CREATE TABLE IF NOT EXISTS ingestion_logs (
@@ -25,9 +34,6 @@ CREATE TABLE IF NOT EXISTS ingestion_logs (
     event_type VARCHAR(50) NOT NULL,
     message TEXT,
     created_at DATETIME NOT NULL,
-    FOREIGN KEY (asset_id) REFERENCES assets(id)
+    INDEX idx_asset_created (asset_id, created_at),
+    FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
 );
-
--- Composite index backing the search/filter query — this is what the
--- 35% (actually ~99% in testing) query performance improvement comes from
-CREATE INDEX idx_tenant_status_created ON assets (tenant_id, status, created_at);

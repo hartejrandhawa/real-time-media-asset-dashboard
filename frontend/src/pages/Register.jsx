@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/auth";
+import AuthLayout from "../components/AuthLayout";
 
 export default function Register() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("viewer");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -17,31 +17,58 @@ export default function Register() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.register({ username, password, role });
-      login(res.token, res.username, res.role);
-      navigate("/dashboard");
+      login(await api.register({ username, password }));
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>Create account</h1>
-        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-        <input type="password" placeholder="Password (min 8 chars)" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="viewer">Viewer (read-only)</option>
-          <option value="editor">Editor (can update status)</option>
-          <option value="admin">Admin (full access)</option>
-        </select>
-        {error && <p className="error-text">{error}</p>}
-        <button type="submit" disabled={loading}>{loading ? "Creating..." : "Register"}</button>
-        <p className="auth-switch">Already have an account? <Link to="/login">Log in</Link></p>
+    <AuthLayout
+      title="Create an account"
+      intro="New accounts can browse and download assets. An admin can give you upload access."
+    >
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <div className="field">
+          <label htmlFor="reg-user">Username</label>
+          <input
+            id="reg-user"
+            autoComplete="username"
+            pattern="[A-Za-z0-9_.\-]{3,50}"
+            title="3–50 characters: letters, numbers, . _ -"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="reg-pass">Password</label>
+          <input
+            id="reg-pass"
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <p className="hint">At least 8 characters.</p>
+        </div>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+          {loading ? "Creating account…" : "Create account"}
+        </button>
       </form>
-    </div>
+      <p className="auth-switch">
+        Already have an account? <Link to="/login">Sign in</Link>
+      </p>
+    </AuthLayout>
   );
 }
