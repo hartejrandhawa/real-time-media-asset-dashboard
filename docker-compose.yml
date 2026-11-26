@@ -1,0 +1,36 @@
+# Local development infrastructure: MySQL + an S3-compatible mock (Adobe S3Mock).
+# S3Mock lets the presigned-URL upload/download flow run for real without an
+# AWS account. Against real AWS, leave S3_ENDPOINT unset in backend/.env.
+#
+#   docker compose up -d
+#
+# Credentials below are for local development only.
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: media_asset_dashboard
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpassword"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  s3:
+    image: adobe/s3mock:latest
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: media-assets-local
+    ports:
+      - "9090:9090"
+
+volumes:
+  mysql-data:
