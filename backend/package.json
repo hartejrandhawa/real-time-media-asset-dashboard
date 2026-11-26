@@ -1,11 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Media Asset Dashboard API (Express + MySQL + S3)",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node scripts/seed.js",
+    "bench": "node scripts/benchmark.js",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "keywords": [],
   "author": "",
@@ -20,5 +23,9 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.23.1",
     "serverless-http": "^3.2.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
   }
 }
