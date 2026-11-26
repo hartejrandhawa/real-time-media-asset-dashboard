@@ -5,8 +5,9 @@
 //   npm run seed -- --rows 160000 --reset   # make a realistic dataset first
 //   npm run bench
 //
-// Both variants run the exact same SQL; the "no index" variant adds
-// IGNORE INDEX so MySQL has to fall back to a full scan + filesort.
+// Both variants run the exact same SQL; the baseline adds IGNORE INDEX for
+// every secondary index on the table, so MySQL has to fall back to a full
+// table scan + filesort, which is what this query did before the index existed.
 const { parseArgs } = require('node:util');
 const { performance } = require('node:perf_hooks');
 const pool = require('../src/config/db');
@@ -50,8 +51,13 @@ async function main() {
   const combos = tenants.flatMap(({ tenant_id }) => STATUSES.map((s) => [tenant_id, s]));
   console.log(`Rows in assets: ${Number(total).toLocaleString()} · ${ITERATIONS} queries per variant\n`);
 
-  const without = await run('Full scan (IGNORE INDEX)', 'IGNORE INDEX (idx_tenant_status_created)', combos);
-  const withIdx = await run('Composite index', '', combos);
+  const [indexes] = await pool.query(
+    `SELECT DISTINCT INDEX_NAME AS name FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'assets' AND INDEX_NAME <> 'PRIMARY'`
+  );
+  const ignoreAll = `IGNORE INDEX (${indexes.map((i) => i.name).join(', ')})`;
+  const without = await run('Full scan (no index)', ignoreAll, combos);
+  const withIdx = await run('Composite index', 'FORCE INDEX (idx_tenant_status_created)', combos);
 
   const fmt = (n) => `${n.toFixed(2)} ms`.padStart(10);
   console.log('Variant                     avg        p50        p95     access  key');

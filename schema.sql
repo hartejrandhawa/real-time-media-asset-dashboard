@@ -20,7 +20,12 @@ CREATE TABLE IF NOT EXISTS assets (
     -- Composite index backing the dashboard search/filter query
     -- (WHERE tenant_id = ? AND status = ? ORDER BY created_at DESC).
     -- Measure its effect with `npm run bench` in backend/.
-    INDEX idx_tenant_status_created (tenant_id, status, created_at)
+    INDEX idx_tenant_status_created (tenant_id, status, created_at),
+    -- Cross-tenant views: the default "newest first" list and the
+    -- status-only filter, which can't use the tenant-led index above.
+    -- file_size makes it covering for the unfiltered per-status totals.
+    INDEX idx_created (created_at),
+    INDEX idx_status_created (status, created_at, file_size)
 );
 
 CREATE TABLE IF NOT EXISTS ingestion_logs (
